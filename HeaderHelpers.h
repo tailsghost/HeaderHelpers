@@ -91,6 +91,26 @@ namespace stringHelper {
 		return copy;
 	}
 
+	static std::wstring ToWideBestEffort(const std::string& s) {
+		if (s.empty()) return L"";
+		auto try_cp = [&](UINT cp)->std::wstring {
+			int n = MultiByteToWideChar(cp, MB_ERR_INVALID_CHARS, s.data(), (int)s.size(), nullptr, 0);
+			if (n <= 0) return L"";
+			std::wstring w(n, L'\0');
+			n = MultiByteToWideChar(cp, MB_ERR_INVALID_CHARS, s.data(), (int)s.size(), &w[0], n);
+			if (n <= 0) return L"";
+			w.resize(n);
+			return w;
+			};
+		if (auto w = try_cp(CP_UTF8); !w.empty()) return w;
+		if (auto w = try_cp(CP_OEMCP); !w.empty()) return w;
+		if (auto w = try_cp(CP_ACP); !w.empty()) return w;
+		std::wstring w;
+		w.reserve(s.size());
+		for (unsigned char c : s) w.push_back((wchar_t)c);
+		return w;
+	}
+
 	static wchar_t* ToWideUtf8WithFallBack(const std::string& s)
 	{
 		if (s.empty())
