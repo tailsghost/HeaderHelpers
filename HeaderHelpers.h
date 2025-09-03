@@ -1,9 +1,68 @@
 ﻿#pragma once
 
+#include <windows.h>
 #include <ranges>
+#include <string>
+#include <vector>
 
 namespace stringHelper {
 	using namespace entities;
+
+
+	static std::wstring utf8ToWstring(const std::string& s) {
+		std::wstring out;
+		out.reserve(s.size());
+		size_t i = 0;
+		while (i < s.size()) {
+			unsigned char c = static_cast<unsigned char>(s[i]);
+			uint32_t codepoint = 0;
+			if (c < 0x80) {
+				codepoint = c;
+				++i;
+			}
+			else if ((c >> 5) == 0x6) {
+				if (i + 1 >= s.size()) break;
+				codepoint = ((c & 0x1F) << 6) | (static_cast<unsigned char>(s[i + 1]) & 0x3F);
+				i += 2;
+			}
+			else if ((c >> 4) == 0xE) {
+				if (i + 2 >= s.size()) break;
+				codepoint = ((c & 0x0F) << 12)
+					| ((static_cast<unsigned char>(s[i + 1]) & 0x3F) << 6)
+					| (static_cast<unsigned char>(s[i + 2]) & 0x3F);
+				i += 3;
+			}
+			else if ((c >> 3) == 0x1E) {
+				if (i + 3 >= s.size()) break;
+				codepoint = ((c & 0x07) << 18)
+					| ((static_cast<unsigned char>(s[i + 1]) & 0x3F) << 12)
+					| ((static_cast<unsigned char>(s[i + 2]) & 0x3F) << 6)
+					| (static_cast<unsigned char>(s[i + 3]) & 0x3F);
+				i += 4;
+			}
+			else {
+				++i;
+				continue;
+			}
+
+			if (sizeof(wchar_t) == 2) {
+				if (codepoint <= 0xFFFF) {
+					out.push_back(static_cast<wchar_t>(codepoint));
+				}
+				else {
+					codepoint -= 0x10000;
+					wchar_t high = static_cast<wchar_t>((codepoint >> 10) + 0xD800);
+					wchar_t low = static_cast<wchar_t>((codepoint & 0x3FF) + 0xDC00);
+					out.push_back(high);
+					out.push_back(low);
+				}
+			}
+			else {
+				out.push_back(static_cast<wchar_t>(codepoint));
+			}
+		}
+		return out;
+	};
 
 	static wchar_t* AllocCopyWide_CoTask(const std::wstring& src)
 	{
@@ -121,17 +180,22 @@ namespace stringHelper {
 		return rtrim(ltrim(s));
 	}
 
+	static std::wstring vectorUint8ToString(const std::vector<uint8_t>& v) {
+		std::string s(v.begin(), v.end());
+		return utf8ToWstring(s);
+	}
+
 }
 
 namespace timeHelper
 {
-	static int64_t* GetTimeOfDayTicks()
+	static int64_t GetTimeOfDayTicks()
 	{
 		SYSTEMTIME st;
 		GetLocalTime(&st);
 		const auto seconds = static_cast<int64_t>(st.wHour) * 3600 + static_cast<int64_t>(st.wMinute) * 60 + st.wSecond;
 		auto ticks = seconds * 10000000LL;
 		ticks += static_cast<int64_t>(st.wMilliseconds * 10000LL);
-		return &ticks;
+		return ticks;
 	}
 }
