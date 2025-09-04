@@ -111,6 +111,17 @@ namespace stringHelper {
 		return w;
 	}
 
+	static std::string ToStringBestEffort(const std::wstring& line) {
+		auto n = WideCharToMultiByte(CP_UTF8, 0, line.c_str(), (int)line.size(), nullptr, 0, nullptr, nullptr);
+		std::string out;
+		if (n > 0) {
+			out.resize(n);
+			WideCharToMultiByte(CP_UTF8, 0, line.c_str(), (int)line.size(), &out[0], n, nullptr, nullptr);
+		}
+		out.push_back('\n');
+		return out;
+	}
+
 	static wchar_t* ToWideUtf8WithFallBack(const std::string& s)
 	{
 		if (s.empty())
