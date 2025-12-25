@@ -6,8 +6,53 @@
 #include <vector>
 
 namespace stringHelper {
-	using namespace entities;
 
+	static std::vector<std::wstring> SplitArgs(const std::wstring& s) {
+		std::vector<std::wstring> out;
+		std::wstring cur;
+		bool quoted = false;
+
+		for (wchar_t c : s) {
+			if (c == L'"') {
+				quoted = !quoted;
+				continue;
+			}
+			if (!quoted && iswspace(c)) {
+				if (!cur.empty()) {
+					out.push_back(cur);
+					cur.clear();
+				}
+			}
+			else cur += c;
+		}
+		if (!cur.empty()) out.push_back(cur);
+		return out;
+	}
+
+	static std::wstring Utf8ToWide(const std::string& s) {
+		if (s.empty()) return {};
+
+		int size = MultiByteToWideChar(
+			CP_UTF8,
+			0,
+			s.data(),
+			(int)s.size(),
+			nullptr,
+			0
+		);
+
+		std::wstring out(size, 0);
+		MultiByteToWideChar(
+			CP_UTF8,
+			0,
+			s.data(),
+			(int)s.size(),
+			out.data(),
+			size
+		);
+
+		return out;
+	}
 
 	static std::wstring utf8ToWstring(const std::string& s) {
 		std::wstring out;
